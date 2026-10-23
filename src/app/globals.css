@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+[data-theme="dark"] {
+  --bg: 30 30 30;
+  --panel: 37 37 38;
+  --side: 24 24 24;
+  --line: 52 52 54;
+  --fg: 240 240 240;
+  --mute: 150 150 155;
+  --accent: 59 130 246;
+}
+[data-theme="light"] {
+  --bg: 250 250 250;
+  --panel: 243 243 244;
+  --side: 238 238 240;
+  --line: 218 218 222;
+  --fg: 24 24 27;
+  --mute: 100 100 110;
+  --accent: 37 99 235;
+}
+
+html, body { height: 100%; }
+body { @apply bg-bg text-fg font-sans antialiased overflow-hidden; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgb(var(--line)); border-radius: 6px; }
+.dots { background-image: radial-gradient(rgb(var(--line) / .6) 1px, transparent 1px); background-size: 22px 22px; }
+@keyframes blink { 50% { opacity: 0; } }
+.caret { animation: blink 1s steps(1) infinite; }
