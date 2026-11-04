@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useSpring, useTransform } from "framer-motion";
 import { Download, ArrowRight, Mail, MapPin } from "lucide-react";
-import { profile, photos, stats, stack, services, career, projects, skills, education, testimonials } from "../data/content";
+import { profile, bookingUrl, photos, stats, stack, services, career, projects, workflows, tiers, skills, education, testimonials } from "../data/content";
 
 const reveal = {
   initial: { opacity: 0, y: 24 },
@@ -15,6 +15,8 @@ const H = ({ children, label }: { children: React.ReactNode; label: string }) =>
   <motion.div {...reveal} className="mb-8">
     <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-accent">{label}</p>
     <h2 className="mt-2 text-3xl font-bold sm:text-4xl">{children}</h2>
+    <motion.i initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.2 }}
+      className="mt-3 block h-0.5 w-16 origin-left bg-accent" />
   </motion.div>
 );
 
@@ -71,13 +73,52 @@ function HeroPhoto() {
   );
 }
 
+// automation-flow motion: nodes linked by lines with data pulses travelling along them
+const flowNodes: [string, number, number][] = [
+  ["Trigger", 8, 18], ["n8n", 30, 8], ["Make", 30, 38], ["API", 56, 22], ["SQL", 80, 10], ["GHL", 82, 42], ["Done ✓", 94, 26],
+];
+const flowLinks: [number, number][] = [[0, 1], [0, 2], [1, 3], [2, 3], [3, 4], [3, 5], [4, 6], [5, 6]];
+
+function FlowBackdrop() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
+  useEffect(() => { setScroller(ref.current?.closest<HTMLElement>("[data-scroll]") ?? null); }, []);
+  const { scrollY } = useScroll({ container: { current: scroller } });
+  const y = useTransform(scrollY, [0, 600], [0, 140]);
+  return (
+    <motion.div ref={ref} aria-hidden style={{ y }} className="pointer-events-none absolute inset-x-0 top-0 h-72 overflow-hidden opacity-40 [mask-image:linear-gradient(to_bottom,black,transparent)]">
+      <svg viewBox="0 0 100 50" preserveAspectRatio="none" className="h-full w-full">
+        {flowLinks.map(([a, b], i) => {
+          const [, x1, y1] = flowNodes[a], [, x2, y2] = flowNodes[b];
+          return (
+            <g key={i}>
+              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgb(var(--line))" strokeWidth="0.25" vectorEffect="non-scaling-stroke" />
+              <motion.circle r="0.7" className="fill-accent" initial={{ cx: x1, cy: y1 }}
+                animate={{ cx: [x1, x2], cy: [y1, y2], opacity: [0, 1, 1, 0] }}
+                transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.35, ease: "linear" }} />
+            </g>
+          );
+        })}
+      </svg>
+      {flowNodes.map(([label, x, y], i) => (
+        <motion.span key={label} style={{ left: `${x}%`, top: `${y * 2}%` }}
+          animate={{ y: [0, -4, 0] }} transition={{ duration: 3 + (i % 3), repeat: Infinity, ease: "easeInOut", delay: i * 0.2 }}
+          className="absolute -translate-x-1/2 -translate-y-1/2 rounded border border-accent/40 bg-panel px-2 py-0.5 font-mono text-[10px] text-accent">
+          {label}
+        </motion.span>
+      ))}
+    </motion.div>
+  );
+}
+
 export function Home({ goto }: { goto: (id: string) => void }) {
   const words = profile.roles;
   return (
-    <section className="mx-auto flex min-h-full max-w-6xl flex-col justify-center gap-10 px-6 py-16 lg:flex-row lg:items-center">
-      <div className="flex-1">
+    <section className="relative mx-auto flex min-h-full max-w-6xl flex-col justify-center gap-10 px-6 py-16 lg:flex-row lg:items-center">
+      <FlowBackdrop />
+      <div className="relative flex-1">
         <div className="border-l-2 border-accent pl-3 font-mono text-sm">
-          <p className="text-[10px] uppercase tracking-[0.25em] text-mute">Current focus</p>
+          <p className="text-[10px] uppercase tracking-[0.25em] text-mute">{profile.name}</p>
           <p>
             <span className="text-accent">const</span> role = <span className="text-orange-400">&quot;{words[0]}&quot;</span>;
             <span className="caret ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 bg-accent" />
@@ -87,21 +128,12 @@ export function Home({ goto }: { goto: (id: string) => void }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
-          className="mt-6 text-5xl font-bold leading-tight sm:text-6xl"
+          className="mt-6 text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl"
         >
-          Hi{" "}
-          <motion.span
-            className="inline-block origin-bottom-right"
-            animate={{ rotate: [0, 18, -8, 18, 0] }}
-            transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 2 }}
-          >
-            👋
-          </motion.span>{" "}
-          my name is
-          <br />
-          {profile.name}
+          Stop acting like a <span className="text-accent">robot.</span>
         </motion.h1>
-        <p className="mt-6 max-w-xl text-lg text-mute">{profile.intro}</p>
+        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.25 }}
+          className="mt-6 max-w-xl text-lg text-mute">{profile.intro}</motion.p>
         <div className="mt-4 flex flex-wrap gap-2">
           {words.map((w) => <Chip key={w}>{w}</Chip>)}
         </div>
@@ -109,7 +141,10 @@ export function Home({ goto }: { goto: (id: string) => void }) {
           <button onClick={() => goto("work")} className="flex items-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-semibold text-white hover:opacity-90">
             View My Work <ArrowRight size={16} />
           </button>
-          <a href={profile.resume} className="flex items-center gap-2 rounded-md border border-line px-5 py-3 text-sm font-medium hover:bg-panel">
+          <button onClick={() => goto("pricing")} className="flex items-center gap-2 rounded-md border border-line px-5 py-3 text-sm font-medium hover:bg-panel">
+            See Pricing
+          </button>
+          <a href={profile.resume} download className="flex items-center gap-2 rounded-md border border-line px-5 py-3 text-sm font-medium hover:bg-panel">
             <Download size={16} /> Download Resume
           </a>
         </div>
@@ -183,14 +218,74 @@ export function Work() {
             whileHover={{ y: -4 }}
             className="group rounded-xl border border-line bg-panel p-6"
           >
-            <div className="mb-4 h-32 rounded-lg bg-gradient-to-br from-accent/30 to-transparent" />
+            {p.images?.length ? (
+              <div className="mb-4 flex snap-x gap-2 overflow-x-auto rounded-lg">
+                {p.images.map((src) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={src} src={src} alt={p.name} className="h-40 w-full shrink-0 snap-center rounded-lg border border-line object-cover object-top" />
+                ))}
+              </div>
+            ) : (
+              <div className="mb-4 h-32 rounded-lg bg-gradient-to-br from-accent/30 to-transparent" />
+            )}
             <h3 className="text-lg font-semibold group-hover:text-accent">{p.name}</h3>
             <p className="mt-1 text-sm text-mute">{p.desc}</p>
+            {p.impact && <p className="mt-2 border-l-2 border-accent pl-3 text-sm"><b className="text-accent">Impact:</b> {p.impact}</p>}
             {p.link && <a href={p.link} target="_blank" rel="noreferrer" className="mt-2 inline-block font-mono text-xs text-accent hover:underline">{p.link.replace("https://", "")} ↗</a>}
             <div className="mt-3 flex flex-wrap gap-2">
               {p.tags.map((t) => <Chip key={t}>{t}</Chip>)}
             </div>
           </motion.article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function Workflows() {
+  const color = { GHL: "text-orange-400", Zapier: "text-amber-400", n8n: "text-rose-400" };
+  return (
+    <section className="mx-auto max-w-5xl px-6 py-16">
+      <H label="workflows.json">Sample automations</H>
+      <div className="grid gap-5 md:grid-cols-3">
+        {workflows.map((w, i) => (
+          <motion.article key={w.name} {...reveal} transition={{ duration: 0.5, delay: i * 0.1 }} whileHover={{ y: -4 }}
+            className="rounded-xl border border-line bg-panel p-6">
+            {w.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={w.image} alt={w.name} className="mb-4 h-32 w-full rounded-lg border border-line object-cover" />
+            ) : (
+              <div className="mb-4 grid h-32 place-items-center rounded-lg border border-dashed border-line font-mono text-xs text-mute">screenshot soon</div>
+            )}
+            <p className={`font-mono text-xs font-bold ${color[w.platform]}`}>{w.platform}</p>
+            <h3 className="mt-1 text-lg font-semibold">{w.name}</h3>
+            <p className="mt-1 text-sm text-mute">{w.desc}</p>
+          </motion.article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function Pricing({ onSelect }: { onSelect: (name: string) => void }) {
+  return (
+    <section className="mx-auto max-w-5xl px-6 py-16">
+      <H label="pricing.md">Pick a tier</H>
+      <div className="grid gap-5 md:grid-cols-3">
+        {tiers.map((t, i) => (
+          <motion.div key={t.id} {...reveal} transition={{ duration: 0.5, delay: i * 0.1 }} whileHover={{ y: -4 }}
+            className={`flex flex-col rounded-xl border bg-panel p-6 ${t.id === "intermediate" ? "border-accent" : "border-line"}`}>
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-mute">{t.name}</p>
+            <p className="mt-3 font-mono text-xs text-mute">{t.note}</p>
+            <p className="text-4xl font-bold">{t.price}</p>
+            <ul className="mt-4 flex-1 space-y-2 text-sm text-mute">
+              {t.features.map((f) => <li key={f} className="flex gap-2"><span className="text-accent">▹</span>{f}</li>)}
+            </ul>
+            <button onClick={() => onSelect(t.name)}
+              className={`mt-6 rounded-md px-5 py-3 text-sm font-semibold ${t.id === "intermediate" ? "bg-accent text-white hover:opacity-90" : "border border-line hover:bg-side"}`}>
+              {t.id === "enterprise" ? "Request a quote" : "Select this tier"}
+            </button>
+          </motion.div>
         ))}
       </div>
     </section>
@@ -243,7 +338,7 @@ export function Testimonials() {
   return (
     <section className="mx-auto max-w-5xl px-6 py-16">
       <H label="testimonials.md">Kind words</H>
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-2">
         {testimonials.map((t, i) => (
           <motion.blockquote key={i} {...reveal} transition={{ duration: 0.5, delay: i * 0.1 }} className="rounded-xl border border-line bg-panel p-6">
             <p className="text-sm italic text-mute">&gt; &ldquo;{t.quote}&rdquo;</p>
@@ -258,16 +353,18 @@ export function Testimonials() {
   );
 }
 
-export function Contact() {
+export function Contact({ plan }: { plan: string }) {
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    window.location.href = `mailto:${profile.email}?subject=${encodeURIComponent(String(f.get("name")))}&body=${encodeURIComponent(String(f.get("msg")))}`;
+    const subject = `${String(f.get("name"))}${plan ? ` — ${plan}` : ""}`;
+    window.location.href = `mailto:${profile.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(String(f.get("msg")))}`;
   };
   const field = "w-full rounded-md border border-line bg-panel px-4 py-3 text-sm outline-none focus:border-accent";
   return (
     <section className="mx-auto max-w-2xl px-6 py-16">
       <H label="contact.css">Let&apos;s work together</H>
+      {plan && <p className="mb-4 font-mono text-sm">Selected tier: <b className="text-accent">{plan}</b></p>}
       <form onSubmit={submit} className="space-y-4">
         <input name="name" required placeholder="Your name" className={field} />
         <textarea name="msg" required rows={5} placeholder="Tell me about your project" className={field} />
@@ -277,6 +374,23 @@ export function Contact() {
         <span className="flex items-center gap-2"><Mail size={16} />{profile.email}</span>
         <span className="flex items-center gap-2"><MapPin size={16} />{profile.location}</span>
       </div>
+    </section>
+  );
+}
+
+export function Booking() {
+  return (
+    <section className="mx-auto max-w-4xl px-6 py-16">
+      <H label="booking.cal">Book a call</H>
+      <p className="mb-6 max-w-xl text-mute">Pick an open slot and it goes straight onto my calendar. Times shown are in your local timezone.</p>
+      {bookingUrl ? (
+        <iframe src={bookingUrl} title="Book a call" loading="lazy" className="h-[640px] w-full rounded-xl border border-line bg-white" />
+      ) : (
+        <div className="grid h-64 place-items-center rounded-xl border border-dashed border-line bg-panel px-6 text-center font-mono text-sm text-mute">
+          Booking calendar not connected yet. Add your Google appointment page URL to bookingUrl in content.ts.
+        </div>
+      )}
+      {bookingUrl && <a href={bookingUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block font-mono text-xs text-accent hover:underline">Open in a new tab ↗</a>}
     </section>
   );
 }

@@ -6,7 +6,7 @@ const sans = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700", 
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "Portfolio — Software Developer · Automation Specialist · Systems Analyst",
+  title: "John Robert Tipon — Software Developer · Automation Specialist · Systems Analyst",
   description: "Portfolio IDE of a software developer, automation specialist and systems analyst.",
 };
 

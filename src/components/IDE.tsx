@@ -1,9 +1,9 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useScroll, useSpring } from "framer-motion";
 import { FileText, Github, Linkedin, Facebook, MessageCircle, Gamepad2, Mail, Sun, Moon, GitBranch, Search } from "lucide-react";
 import Splash from "./Splash";
-import { Home, WhatIDo, Career, Work, Skills, Education, Testimonials, Contact } from "./views";
+import { Home, WhatIDo, Career, Work, Skills, Education, Testimonials, Workflows, Pricing, Booking, Contact } from "./views";
 import { profile } from "../data/content";
 
 type FileDef = { id: string; name: string; badge: string; color: string };
@@ -13,9 +13,12 @@ const files: FileDef[] = [
   { id: "what", name: "what-i-do.tsx", badge: "TS", color: "text-sky-400" },
   { id: "career", name: "career.tsx", badge: "TS", color: "text-sky-400" },
   { id: "work", name: "work.tsx", badge: "TS", color: "text-orange-400" },
+  { id: "workflows", name: "workflows.json", badge: "{}", color: "text-amber-400" },
   { id: "skills", name: "skills.json", badge: "{}", color: "text-yellow-400" },
   { id: "education", name: "education.yaml", badge: "Y", color: "text-green-400" },
   { id: "testimonials", name: "testimonials.md", badge: "M", color: "text-blue-400" },
+  { id: "pricing", name: "pricing.md", badge: "M", color: "text-emerald-400" },
+  { id: "booking", name: "booking.cal", badge: "◷", color: "text-pink-400" },
   { id: "contact", name: "contact.css", badge: "#", color: "text-indigo-400" },
 ];
 
@@ -26,7 +29,10 @@ const Badge = ({ f }: { f: FileDef }) => (
 export default function IDE() {
   const [booted, setBooted] = useState(false);
   const [active, setActive] = useState("home");
+  const [plan, setPlan] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ container: scroller });
+  const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 24 });
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   const done = useCallback(() => setBooted(true), []);
@@ -57,10 +63,13 @@ export default function IDE() {
     what: <WhatIDo />,
     career: <Career />,
     work: <Work />,
+    workflows: <Workflows />,
     skills: <Skills />,
     education: <Education />,
     testimonials: <Testimonials />,
-    contact: <Contact />,
+    pricing: <Pricing onSelect={(n) => { setPlan(n); goto("contact"); }} />,
+    booking: <Booking />,
+    contact: <Contact plan={plan} />,
   };
 
   const social = [
@@ -116,8 +125,8 @@ export default function IDE() {
                 </li>
               ))}
               <li>
-                <a href={profile.resume} className="flex items-center gap-2.5 rounded px-2 py-1.5 font-mono text-xs text-mute hover:bg-panel">
-                  <FileText size={14} className="text-red-400" />resume.pdf
+                <a href={profile.resume} download className="flex items-center gap-2.5 rounded px-2 py-1.5 font-mono text-xs text-mute hover:bg-panel">
+                  <FileText size={14} className="text-red-400" />resume.docx
                 </a>
               </li>
             </ul>
@@ -135,7 +144,7 @@ export default function IDE() {
           </aside>
 
           {/* editor */}
-          <main className="flex min-w-0 flex-1 flex-col">
+          <main className="relative flex min-w-0 flex-1 flex-col">
             <div className="flex shrink-0 overflow-x-auto border-b border-line bg-side">
               {files.map((f) => (
                 <div key={f.id} onClick={() => goto(f.id)}
@@ -147,6 +156,7 @@ export default function IDE() {
             <div className="shrink-0 border-b border-line px-4 py-1.5 font-mono text-[11px] text-mute">
               <span className="text-green-500">{profile.handle}</span> / src / <span className="text-fg">{current.name}</span>
             </div>
+            <motion.div style={{ scaleX: progress }} className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 origin-left bg-accent" />
             <div ref={scroller} data-scroll className="min-h-0 flex-1 overflow-y-auto">
               {files.map((f) => (
                 <motion.section key={f.id} id={`sec-${f.id}`} className="min-h-full border-b border-line/50"
