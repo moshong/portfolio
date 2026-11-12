@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { motion, useScroll, useSpring, useTransform } from "framer-motion";
+import { motion, useMotionValue, useScroll, useSpring, useTransform, useVelocity } from "framer-motion";
 import { Download, ArrowRight, Mail, MapPin } from "lucide-react";
-import { profile, bookingUrl, photos, stats, stack, services, career, projects, workflows, tiers, skills, education, testimonials } from "../data/content";
+import { profile, bookingUrl, bookingQuestions, photos, lookPhotos, stats, stack, services, career, projects, workflows, specializations, tiers, skills, education, testimonials } from "../data/content";
 
 const reveal = {
   initial: { opacity: 0, y: 24 },
@@ -28,6 +28,7 @@ function HeroPhoto() {
   const ref = useRef<HTMLDivElement>(null);
   const [scroller, setScroller] = useState<HTMLElement | null>(null);
   const [idx, setIdx] = useState(0);
+  const [dir, setDir] = useState<"center" | "up" | "down" | "left" | "right">("center");
 
   useEffect(() => {
     setScroller(ref.current?.closest<HTMLElement>("[data-scroll]") ?? null);
@@ -39,27 +40,58 @@ function HeroPhoto() {
   }, []);
 
   const { scrollY } = useScroll({ container: { current: scroller } });
-  const smooth = useSpring(scrollY, { stiffness: 80, damping: 20 });
-  const rotateY = useTransform(smooth, [0, 500], [0, -28]);
-  const rotateZ = useTransform(smooth, [0, 500], [0, 5]);
-  const y = useTransform(smooth, [0, 500], [0, 120]);
-  const scale = useTransform(smooth, [0, 500], [1, 0.9]);
+  // the photo follows the cursor (or a dragging finger) and also tilts with scroll speed; it settles back to normal at rest
+  const nx = useMotionValue(0);
+  const ny = useMotionValue(0);
+  const velocity = useVelocity(scrollY);
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const r = ref.current?.getBoundingClientRect();
+      if (!r) return;
+      const dx = (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2);
+      const dy = (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2);
+      nx.set(Math.max(-1, Math.min(1, dx)));
+      ny.set(Math.max(-1, Math.min(1, dy)));
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 0.25) setDir("center");
+      else if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? "right" : "left");
+      else setDir(dy > 0 ? "down" : "up");
+    };
+    const reset = () => { nx.set(0); ny.set(0); setDir("center"); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", reset);
+    document.documentElement.addEventListener("pointerleave", reset);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", reset);
+      document.documentElement.removeEventListener("pointerleave", reset);
+    };
+  }, [nx, ny]);
+  const spring = { stiffness: 120, damping: 18 };
+  const rotateY = useSpring(useTransform(nx, (v) => v * 24), spring);
+  const rotateX = useSpring(useTransform([ny, velocity], ([y, v]: number[]) => -y * 18 + Math.max(-1, Math.min(1, v / 1500)) * -12), spring);
+  const shiftX = useSpring(useTransform(nx, (v) => v * 8), spring);
+  const shiftY = useSpring(useTransform(ny, (v) => v * 6), spring);
 
   return (
-    <div ref={ref} className="mx-auto shrink-0 [perspective:1000px]">
+    <div ref={ref} className="order-first mx-auto shrink-0 [perspective:1000px] lg:order-none">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.7 }}
-        style={{ rotateY, rotateZ, y, scale }}
-        className="relative h-80 w-72 overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl shadow-accent/10 lg:h-[460px] lg:w-96"
+        style={{ rotateX, rotateY, x: shiftX, y: shiftY }}
+        className="relative h-72 w-64 overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl shadow-accent/10 sm:h-80 sm:w-72 lg:h-[460px] lg:w-96 max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:[mask-image:radial-gradient(ellipse_at_center,black_55%,transparent_100%)]"
       >
         {photos.map((src, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img key={src} src={src} alt={profile.name}
             className={`absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-700 ${i === idx ? "opacity-100" : "opacity-0"}`} />
         ))}
-        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-bg/80 to-transparent" />
+        {Object.entries(lookPhotos).map(([d, src]) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={d} src={src} alt="" aria-hidden
+            className={`absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-200 ${dir === d ? "opacity-100" : "opacity-0"}`} />
+        ))}
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-bg/80 to-transparent max-lg:hidden" />
         {photos.length > 1 && (
           <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
             {photos.map((_, i) => (
@@ -130,7 +162,7 @@ export function Home({ goto }: { goto: (id: string) => void }) {
           transition={{ duration: 0.7 }}
           className="mt-6 text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl"
         >
-          Stop acting like a <span className="text-accent">robot.</span>
+          Let’s give you<br />your <span className="text-accent">time back.</span>
         </motion.h1>
         <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.25 }}
           className="mt-6 max-w-xl text-lg text-mute">{profile.intro}</motion.p>
@@ -198,6 +230,14 @@ export function Career() {
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-mute">
               {c.points.map((p) => <li key={p}>{p}</li>)}
             </ul>
+            {c.impact?.length ? (
+              <div className="mt-3 rounded-lg border border-line bg-card/40 p-4">
+                <p className="font-mono text-xs uppercase tracking-wider text-accent">How this helps</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-mute">
+                  {c.impact.map((p) => <li key={p}>{p}</li>)}
+                </ul>
+              </div>
+            ) : null}
           </motion.li>
         ))}
       </ol>
@@ -243,23 +283,31 @@ export function Work() {
 }
 
 export function Workflows() {
-  const color = { GHL: "text-orange-400", Zapier: "text-amber-400", n8n: "text-rose-400" };
+  const color: Record<string, string> = { GHL: "text-orange-400", Zapier: "text-amber-400", n8n: "text-rose-400", Make: "text-violet-400" };
+  const label: Record<string, string> = { GHL: "GoHighLevel", Zapier: "Zapier", n8n: "n8n", Make: "Make.com" };
   return (
     <section className="mx-auto max-w-5xl px-6 py-16">
       <H label="workflows.json">Sample automations</H>
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="mb-8 flex flex-wrap gap-2">
+        {specializations.map((s) => <Chip key={s}>{s}</Chip>)}
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
         {workflows.map((w, i) => (
-          <motion.article key={w.name} {...reveal} transition={{ duration: 0.5, delay: i * 0.1 }} whileHover={{ y: -4 }}
-            className="rounded-xl border border-line bg-panel p-6">
+          <motion.article key={w.name} {...reveal} transition={{ duration: 0.5, delay: (i % 2) * 0.1 }} whileHover={{ y: -4 }}
+            className="flex flex-col rounded-xl border border-line bg-panel p-6">
             {w.image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={w.image} alt={w.name} className="mb-4 h-32 w-full rounded-lg border border-line object-cover" />
-            ) : (
-              <div className="mb-4 grid h-32 place-items-center rounded-lg border border-dashed border-line font-mono text-xs text-mute">screenshot soon</div>
-            )}
-            <p className={`font-mono text-xs font-bold ${color[w.platform]}`}>{w.platform}</p>
+              <img src={w.image} alt={w.name} className="mb-4 h-40 w-full rounded-lg border border-line object-cover" />
+            ) : null}
+            <p className={`font-mono text-xs font-bold ${color[w.platform]}`}>
+              {String(i + 1).padStart(2, "0")} · {label[w.platform]}
+            </p>
             <h3 className="mt-1 text-lg font-semibold">{w.name}</h3>
-            <p className="mt-1 text-sm text-mute">{w.desc}</p>
+            <p className="mt-2 text-sm text-mute">{w.desc}</p>
+            <p className="mt-3 text-sm"><b className="text-accent">How it helps: </b><span className="text-mute">{w.helps}</span></p>
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {w.tools.map((t) => <span key={t} className="rounded border border-line px-2 py-0.5 font-mono text-[11px] text-mute">{t}</span>)}
+            </div>
           </motion.article>
         ))}
       </div>
@@ -379,18 +427,76 @@ export function Contact({ plan }: { plan: string }) {
 }
 
 export function Booking() {
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [ready, setReady] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const isOther = (v?: string) => !!v && v.startsWith("Other");
+  const val = (id: string) => {
+    const a = answers[id];
+    const extra = answers[`${id}_other`]?.trim();
+    return isOther(a) && extra ? `Other: ${extra}` : a;
+  };
+  const summary = bookingQuestions.map((q) => `${q.label} ${val(q.id)}`).join("\n");
+  const mailto = `mailto:${profile.email}?subject=${encodeURIComponent("Call booking details")}&body=${encodeURIComponent(summary)}`;
+  const sel = "w-full rounded-md border border-line bg-panel px-4 py-3 text-sm outline-none focus:border-accent";
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(summary); setCopied(true); } catch { /* clipboard unavailable */ }
+  };
   return (
     <section className="mx-auto max-w-4xl px-6 py-16">
       <H label="booking.cal">Book a call</H>
-      <p className="mb-6 max-w-xl text-mute">Pick an open slot and it goes straight onto my calendar. Times shown are in your local timezone.</p>
-      {bookingUrl ? (
+      {!ready ? (
+        <form
+          onSubmit={(e) => { e.preventDefault(); setReady(true); }}
+          className="max-w-xl space-y-4"
+        >
+          <p className="text-mute">Three quick questions so I can come prepared. Then pick a time.</p>
+          {bookingQuestions.map((q) => (
+            <label key={q.id} className="block text-sm">
+              <span className="mb-1 block font-medium">{q.label}</span>
+              <select required value={answers[q.id] ?? ""} onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })} className={sel}>
+                <option value="" disabled>Select…</option>
+                {q.options.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+              {isOther(answers[q.id]) && (
+                <input
+                  required
+                  autoFocus
+                  value={answers[`${q.id}_other`] ?? ""}
+                  onChange={(e) => setAnswers({ ...answers, [`${q.id}_other`]: e.target.value })}
+                  placeholder="Please specify"
+                  className={`${sel} mt-2`}
+                />
+              )}
+            </label>
+          ))}
+          <button className="rounded-md bg-accent px-6 py-3 text-sm font-semibold text-white hover:opacity-90">Continue to calendar</button>
+        </form>
+      ) : (
+        <>
+          <div className="mb-6 max-w-xl rounded-lg border border-line bg-panel p-4 text-sm">
+            <p className="font-mono text-xs uppercase tracking-wider text-accent">Your answers</p>
+            <ul className="mt-2 space-y-1 text-mute">
+              {bookingQuestions.map((q) => <li key={q.id}>{q.label} <b className="text-fg">{val(q.id)}</b></li>)}
+            </ul>
+            <p className="mt-3 text-mute">After you pick a slot, paste these into the booking notes, or email them to me so I have them before the call.</p>
+            <div className="mt-3 flex flex-wrap gap-4 font-mono text-xs">
+              <button type="button" onClick={copy} className="text-accent hover:underline">{copied ? "Copied ✓" : "Copy answers"}</button>
+              <a href={mailto} className="text-accent hover:underline">Email answers</a>
+              <button type="button" onClick={() => setReady(false)} className="text-mute hover:underline">Edit</button>
+            </div>
+          </div>
+          <p className="mb-6 max-w-xl text-mute">Pick an open slot and it goes straight onto my calendar. Times shown are in your local timezone.</p>
+        </>
+      )}
+      {ready && (bookingUrl ? (
         <iframe src={bookingUrl} title="Book a call" loading="lazy" className="h-[640px] w-full rounded-xl border border-line bg-white" />
       ) : (
         <div className="grid h-64 place-items-center rounded-xl border border-dashed border-line bg-panel px-6 text-center font-mono text-sm text-mute">
           Booking calendar not connected yet. Add your Google appointment page URL to bookingUrl in content.ts.
         </div>
-      )}
-      {bookingUrl && <a href={bookingUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block font-mono text-xs text-accent hover:underline">Open in a new tab ↗</a>}
+      ))}
+      {ready && bookingUrl && <a href={bookingUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block font-mono text-xs text-accent hover:underline">Open in a new tab ↗</a>}
     </section>
   );
 }
